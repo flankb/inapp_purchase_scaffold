@@ -36,6 +36,7 @@ class PurchaseCompletedState {
   final Map<String, String> productErrors;
   final List<String> consumables;
   final bool isAvailable; // = false;
+  @deprecated
   final bool purchasePending; // = false;
   final bool loading; // = true;
   final String serviceError;
@@ -48,7 +49,7 @@ class PurchaseCompletedState {
       consumables: [],
       isAvailable: false,
       purchasePending: false,
-      loading: true,
+      loading: false,
       serviceError: null,
       productErrors: {},
     );
@@ -66,13 +67,17 @@ class PurchaseCompletedState {
     @required this.serviceError,
   });
 
-  PurchaseCompletedState error(String error) {
+  /*PurchaseCompletedState error(String error) {
     return copyWith(serviceError: error);
-  }
+  }*/
 
   PurchaseCompletedState success() {
     return copyWith(serviceError: null, isAvailable: true, productErrors: {});
   }
+
+  /*PurchaseCompletedState startLoading() {
+    return copyWith(loading: true);
+  }*/
 
   PurchaseCompletedState copyWith({
     List<String> notFoundIds,
@@ -174,7 +179,7 @@ class PurchaserBloc implements BasePurchaseBloc {
     }, onDone: () {
       _subscription?.cancel();
     }, onError: (error) {
-      _emitPurchaseError("Purchase update status failed!");
+      _emitFailedState("Purchase update status failed!");
     });
   }
 
@@ -182,9 +187,11 @@ class PurchaserBloc implements BasePurchaseBloc {
   /// From [productIds]
   Future queryProductDetails(Set<String> productIds) async {
     if (!(await _getAvailability())) {
-      _emitPurchaseState(_purchaseState.copyWith(
-          isAvailable: false, serviceError: "Billing service is unavailable!"));
+      _emitFailedState("Billing service is unavailable!",
+          serviceIsAvailable: false);
       return;
+    } else {
+      _emitLoadingState();
     }
 
     ProductDetailsResponse productDetailResponse =
@@ -195,7 +202,7 @@ class PurchaserBloc implements BasePurchaseBloc {
         key: (item) => item.id,
         value: (item) => item);
 
-    _emitPurchaseState(
+    _emitCompleteState(
         _purchaseState.copyWith(products: productsMap).success());
   }
 
@@ -203,9 +210,11 @@ class PurchaserBloc implements BasePurchaseBloc {
   /// If [acknowledgePendingPurchases] is set then run check
   Future queryPurchases({bool acknowledgePendingPurchases = false}) async {
     if (!(await _getAvailability())) {
-      _emitPurchaseError("Billing service is unavailable!",
+      _emitFailedState("Billing service is unavailable!",
           serviceIsAvailable: false);
       return;
+    } else {
+      _emitLoadingState();
     }
 
     /// Unlike [queryPurchaseHistory], This does not make a network request and
@@ -213,7 +222,7 @@ class PurchaserBloc implements BasePurchaseBloc {
     final QueryPurchaseDetailsResponse purchaseResponse =
         await _connection.queryPastPurchases();
     if (purchaseResponse.error != null) {
-      _emitPurchaseError("Query purchases error!");
+      _emitFailedState("Query purchases error!");
       return;
     }
 
@@ -233,14 +242,14 @@ class PurchaserBloc implements BasePurchaseBloc {
       });
     }
 
-    _emitPurchaseState(newState.success());
+    _emitCompleteState(newState.success());
   }
 
   /// Callback for get changes of product state
   Future _updatePurchases(List<PurchaseDetails> purchasesDetails,
       {bool requestStartLoading = true}) async {
     if (!(await _getAvailability())) {
-      _emitPurchaseError("Billing service is unavailable!",
+      _emitFailedState("Billing service is unavailable!",
           serviceIsAvailable: false);
       return;
     }
@@ -260,7 +269,7 @@ class PurchaserBloc implements BasePurchaseBloc {
     });
 
     if (productErrors.length > 0) {
-      _emitPurchaseState(_purchaseState.copyWith(productErrors: productErrors));
+      _emitCompleteState(_purchaseState.copyWith(productErrors: productErrors));
     }
 
     await queryPurchases();
@@ -287,7 +296,7 @@ class PurchaserBloc implements BasePurchaseBloc {
         await _connection.queryProductDetails({productId});
 
     if (productDetailResponse.error != null) {
-      _emitPurchaseError("Billing service is unavailable!");
+      _emitFailedState("Query products request error!");
       return false;
     }
 
@@ -310,13 +319,23 @@ class PurchaserBloc implements BasePurchaseBloc {
     await _updatePurchases(purchaseDetailsList);
   }
 
-  _emitPurchaseError(String purchaseMessage, {bool serviceIsAvailable = true}) {
-    _emitPurchaseState(_purchaseState.copyWith(
-        serviceError: purchaseMessage, isAvailable: serviceIsAvailable));
+  _emitLoadingState() {
+    _emitState(_purchaseState.copyWith(loading: true));
   }
 
-  _emitPurchaseState(PurchaseCompletedState basePurchaseState) {
-    debugPrint("Emit Purchase state: ${basePurchaseState.toString()}");
+  _emitFailedState(String purchaseMessage, {bool serviceIsAvailable = true}) {
+    _emitState(_purchaseState.copyWith(
+        serviceError: purchaseMessage,
+        isAvailable: serviceIsAvailable,
+        loading: false));
+  }
+
+  _emitCompleteState(PurchaseCompletedState basePurchaseState) {
+    _emitState(basePurchaseState);
+  }
+
+  _emitState(PurchaseCompletedState basePurchaseState) {
+    debugPrint("Emited purchase state: ${basePurchaseState.toString()}");
     _purchaseState = basePurchaseState;
     _purchaseStateStreamController.sink.add(basePurchaseState);
   }
