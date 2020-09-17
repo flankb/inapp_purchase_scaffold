@@ -2,6 +2,7 @@ library inapp_purchase_scaffold;
 
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
@@ -35,10 +36,10 @@ class PurchaseCompletedState {
   final Map<String, PurchaseDetails> purchases;
   final Map<String, String> productErrors;
   final List<String> consumables;
-  final bool isAvailable; // = false;
+  final bool isAvailable;
   @deprecated
-  final bool purchasePending; // = false;
-  final bool loading; // = true;
+  final bool purchasePending;
+  final bool loading;
   final String serviceError;
 
   factory PurchaseCompletedState.empty() {
@@ -67,17 +68,9 @@ class PurchaseCompletedState {
     @required this.serviceError,
   });
 
-  /*PurchaseCompletedState error(String error) {
-    return copyWith(serviceError: error);
-  }*/
-
   PurchaseCompletedState success() {
     return copyWith(serviceError: null, isAvailable: true, productErrors: {});
   }
-
-  /*PurchaseCompletedState startLoading() {
-    return copyWith(loading: true);
-  }*/
 
   PurchaseCompletedState copyWith({
     List<String> notFoundIds,
@@ -186,12 +179,8 @@ class PurchaserBloc implements BasePurchaseBloc {
   /// Get available products
   /// From [productIds]
   Future queryProductDetails(Set<String> productIds) async {
-    if (!(await _getAvailability())) {
-      _emitFailedState("Billing service is unavailable!",
-          serviceIsAvailable: false);
-      return;
-    } else {
-      _emitLoadingState();
+    if (!(await _startConnection())) {
+      return false;
     }
 
     ProductDetailsResponse productDetailResponse =
@@ -209,12 +198,8 @@ class PurchaserBloc implements BasePurchaseBloc {
   /// Check purchases
   /// If [acknowledgePendingPurchases] is set then run check
   Future queryPurchases({bool acknowledgePendingPurchases = false}) async {
-    if (!(await _getAvailability())) {
-      _emitFailedState("Billing service is unavailable!",
-          serviceIsAvailable: false);
-      return;
-    } else {
-      _emitLoadingState();
+    if (!(await _startConnection())) {
+      return false;
     }
 
     /// Unlike [queryPurchaseHistory], This does not make a network request and
@@ -246,12 +231,9 @@ class PurchaserBloc implements BasePurchaseBloc {
   }
 
   /// Callback for get changes of product state
-  Future _updatePurchases(List<PurchaseDetails> purchasesDetails,
-      {bool requestStartLoading = true}) async {
-    if (!(await _getAvailability())) {
-      _emitFailedState("Billing service is unavailable!",
-          serviceIsAvailable: false);
-      return;
+  Future _updatePurchases(List<PurchaseDetails> purchasesDetails) async {
+    if (!(await _startConnection())) {
+      return false;
     }
 
     Map<String, String> productErrors = {};
@@ -275,23 +257,23 @@ class PurchaserBloc implements BasePurchaseBloc {
     await queryPurchases();
   }
 
-  Future _acknowledgePurchase(PurchaseDetails purchasesDetail) async {
+  Future<bool> _acknowledgePurchase(PurchaseDetails purchasesDetail) async {
     if (purchasesDetail.pendingCompletePurchase) {
-      await InAppPurchaseConnection.instance.completePurchase(purchasesDetail);
-      // final completeResult = await InAppPurchaseConnection.instance
-      //     .completePurchase(purchasesDetail);
-
-      // if (completeResult.responseCode != BillingResponse.ok) {
-      //   _emitPurchaseMessage("Purchase is not acknowledged!");
-      // } else {
-      //   _emitPurchaseMessage("Purchase is acknowledged!");
-      // }
+      final completeResult = await InAppPurchaseConnection.instance
+          .completePurchase(purchasesDetail);
+      return completeResult.responseCode == BillingResponse.ok;
     }
+
+    return false;
   }
 
   /// Request purchase flow
   /// [productId] - Id of product
   Future requestPurchase(String productId) async {
+    if (!(await _startConnection())) {
+      return false;
+    }
+
     ProductDetailsResponse productDetailResponse =
         await _connection.queryProductDetails({productId});
 
@@ -303,6 +285,7 @@ class PurchaserBloc implements BasePurchaseBloc {
     final existsProducts =
         productDetailResponse.productDetails.any((element) => true);
     if (!existsProducts) {
+      _emitFailedState("No products error!");
       return false;
     }
 
@@ -340,8 +323,18 @@ class PurchaserBloc implements BasePurchaseBloc {
     _purchaseStateStreamController.sink.add(basePurchaseState);
   }
 
-  Future<bool> _getAvailability() async {
+  /// Open and check connection to Billing service
+  /// Return [true] if success
+  Future<bool> _startConnection() async {
     final isAvailability = await _connection.isAvailable();
+
+    if (!isAvailability) {
+      _emitFailedState("Billing service is unavailable!",
+          serviceIsAvailable: false);
+    } else {
+      _emitLoadingState();
+    }
+
     return isAvailability;
   }
 
