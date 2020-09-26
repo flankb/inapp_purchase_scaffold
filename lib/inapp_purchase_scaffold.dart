@@ -37,7 +37,7 @@ class PurchaseCompletedState {
   final Map<String, String> productErrors;
   final List<String> consumables;
   final bool isAvailable;
-  @deprecated
+  @Deprecated("Use method: productIsPending(String productId)")
   final bool purchasePending;
   final bool loading;
   final String serviceError;
