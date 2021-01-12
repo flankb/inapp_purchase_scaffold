@@ -30,7 +30,7 @@ abstract class BasePurchaseBloc {
   void dispose();
 }
 
-class PurchaseCompletedState {
+class PurchaseState {
   final List<String> notFoundIds;
   final Map<String, ProductDetails> products;
   final Map<String, PurchaseDetails> purchases;
@@ -40,8 +40,8 @@ class PurchaseCompletedState {
   final bool loading;
   final String serviceError;
 
-  factory PurchaseCompletedState.empty() {
-    return PurchaseCompletedState(
+  factory PurchaseState.empty() {
+    return PurchaseState(
       notFoundIds: [],
       products: {},
       purchases: {},
@@ -53,7 +53,7 @@ class PurchaseCompletedState {
     );
   }
 
-  PurchaseCompletedState({
+  PurchaseState({
     @required this.notFoundIds,
     @required this.products,
     @required this.purchases,
@@ -64,11 +64,11 @@ class PurchaseCompletedState {
     @required this.serviceError,
   });
 
-  PurchaseCompletedState success() {
+  PurchaseState success() {
     return copyWith(serviceError: null, isAvailable: true, productErrors: {});
   }
 
-  PurchaseCompletedState copyWith({
+  PurchaseState copyWith({
     List<String> notFoundIds,
     Map<String, ProductDetails> products,
     Map<String, PurchaseDetails> purchases,
@@ -79,7 +79,7 @@ class PurchaseCompletedState {
     bool loading,
     String serviceError,
   }) {
-    return new PurchaseCompletedState(
+    return new PurchaseState(
       notFoundIds: notFoundIds ?? this.notFoundIds,
       products: products ?? this.products,
       purchases: purchases ?? this.purchases,
@@ -137,18 +137,18 @@ class PurchaserBloc implements BasePurchaseBloc {
   InAppPurchaseConnection _connection;
   StreamSubscription<List<PurchaseDetails>> _subscription;
 
-  PurchaseCompletedState _purchaseState;
+  PurchaseState _purchaseState;
 
-  PurchaseCompletedState get purchaseState => _purchaseState;
+  PurchaseState get purchaseState => _purchaseState;
 
-  StreamController<PurchaseCompletedState> _purchaseStateStreamController =
+  StreamController<PurchaseState> _purchaseStateStreamController =
       StreamController.broadcast();
 
-  Stream<PurchaseCompletedState> get purchaseStateStream =>
+  Stream<PurchaseState> get purchaseStateStream =>
       _purchaseStateStreamController.stream; //.asBroadcastStream();
 
   PurchaserBloc() {
-    _purchaseState = PurchaseCompletedState.empty();
+    _purchaseState = PurchaseState.empty();
   }
 
   enablePendingPurchases() {
@@ -308,11 +308,11 @@ class PurchaserBloc implements BasePurchaseBloc {
         loading: false));
   }
 
-  _emitCompleteState(PurchaseCompletedState basePurchaseState) {
+  _emitCompleteState(PurchaseState basePurchaseState) {
     _emitState(basePurchaseState);
   }
 
-  _emitState(PurchaseCompletedState basePurchaseState) {
+  _emitState(PurchaseState basePurchaseState) {
     debugPrint("Emited purchase state: ${basePurchaseState.toString()}");
     _purchaseState = basePurchaseState;
     _purchaseStateStreamController.sink.add(basePurchaseState);
