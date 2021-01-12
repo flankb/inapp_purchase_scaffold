@@ -37,8 +37,6 @@ class PurchaseCompletedState {
   final Map<String, String> productErrors;
   final List<String> consumables;
   final bool isAvailable;
-  @Deprecated("Use method: productIsPending(String productId)")
-  final bool purchasePending;
   final bool loading;
   final String serviceError;
 
@@ -49,7 +47,6 @@ class PurchaseCompletedState {
       purchases: {},
       consumables: [],
       isAvailable: false,
-      purchasePending: false,
       loading: false,
       serviceError: null,
       productErrors: {},
@@ -63,7 +60,6 @@ class PurchaseCompletedState {
     @required this.productErrors,
     @required this.consumables,
     @required this.isAvailable,
-    @required this.purchasePending,
     @required this.loading,
     @required this.serviceError,
   });
@@ -89,7 +85,6 @@ class PurchaseCompletedState {
       purchases: purchases ?? this.purchases,
       consumables: consumables ?? this.consumables,
       isAvailable: isAvailable ?? this.isAvailable,
-      purchasePending: purchasePending ?? this.purchasePending,
       loading: loading ?? this.loading,
       serviceError: serviceError ?? this.serviceError,
       productErrors: productErrors ?? this.productErrors,
