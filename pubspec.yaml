@@ -1,5 +1,5 @@
 name: inapp_purchase_scaffold
-description: Helpers and utils for inapp purchase
+description: Helpers and utils for managing durable in-app purchases
 version: 0.0.1
 author:
 homepage:
