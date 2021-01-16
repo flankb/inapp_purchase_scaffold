@@ -35,6 +35,7 @@ class PurchaseState {
   final Map<String, ProductDetails> products;
   final Map<String, PurchaseDetails> purchases;
   final Map<String, String> productErrors;
+  @deprecated
   final List<String> consumables;
   final bool isAvailable;
   final bool loading;
@@ -133,6 +134,17 @@ class PurchaseState {
   }
 }
 
+/// Scaffold for managing durable in-app purchases
+///
+/// Start work:
+///
+/// ```dart
+/// PurchaserBloc()
+///    ..enablePendingPurchases()
+///    ..enableConnection()
+///    ..listenPurchaseUpdates()
+///    ..queryPurchases(acknowledgePendingPurchases: true);
+/// ```
 class PurchaserBloc implements BasePurchaseBloc {
   InAppPurchaseConnection _connection;
   StreamSubscription<List<PurchaseDetails>> _subscription;
